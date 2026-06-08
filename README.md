@@ -152,3 +152,33 @@ Render — backend
 Supabase — database hosting
 
 
+**System Architecture**
+
+The system is built on a four-layer architecture:
+
+
+
+1. Client Layer — React.js + Tailwind CSS + Recharts handles all user interaction and data visualisation
+
+
+2. Backend Layer — Python + FastAPI manages REST API endpoints, data processing via pandas, and ML models via scikit-learn
+
+
+3. Database Layer — PostgreSQL hosted on Supabase stores all sales records, user data, and AI query logs
+
+
+4. AI Service Layer — OpenAI / Gemini API integrated via LangChain handles insight generation, forecasting, anomaly detection, and chatbot responses
+
+
+**Database Structure**
+
+
+users    products    regions    sales    ai_logs    notifications
+
+
+**User Roles**
+
+
+Admin    Manager    Viewer
+
+
