@@ -1,14 +1,14 @@
-import asyncio
 import json
 import logging
 from typing import Dict, Any, Optional
-from google import genai
-from google.genai import types, errors
+import httpx
 from app.ai.provider import AIProvider
 from app.ai.grounded_engine import GroundedAIEngine
 from app.core.config import settings
 
 logger = logging.getLogger("SalesIQ.ai.gemini")
+
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 SYSTEM_PERSONA = (
     "You are SalesIQ AI, a professional, concise, friendly business assistant embedded in a sales "
@@ -26,50 +26,30 @@ SYSTEM_PERSONA = (
 class GeminiProvider(AIProvider):
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY
-        self.model = settings.GEMINI_MODEL or "gemini-flash-latest"
+        self.model = settings.GEMINI_MODEL or "gemini-2.0-flash"
         self.fallback = GroundedAIEngine()
-        self._client: Optional[genai.Client] = None
-        if self.api_key:
-            try:
-                self._client = genai.Client(
-                    api_key=self.api_key,
-                    http_options=types.HttpOptions(timeout=12000),  # ms
-                )
-            except Exception:
-                logger.exception("Failed to initialize Gemini client")
-                self._client = None
-        else:
+        if not self.api_key:
             logger.warning("GEMINI_API_KEY not set; Gemini provider will use the offline fallback engine.")
 
     async def _generate(self, prompt: str) -> Optional[str]:
-        if not self._client:
+        if not self.api_key:
             return None
+        url = f"{GEMINI_API_BASE}/{self.model}:generateContent?key={self.api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"maxOutputTokens": 1024, "temperature": 0.4},
+        }
         try:
-            response = await asyncio.wait_for(
-                asyncio.to_thread(self._client.models.generate_content, model=self.model, contents=prompt),
-                timeout=15.0,
-            )
-            text = (getattr(response, "text", None) or "").strip()
-            if not text:
-                logger.warning("Gemini returned an empty response for model %s", self.model)
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(url, json=payload)
+            if resp.status_code != 200:
+                logger.error("Gemini API error %s: %s", resp.status_code, resp.text[:300])
                 return None
-            return text
-        except asyncio.TimeoutError:
-            logger.error("Gemini request timed out after 15s (model=%s)", self.model)
-            return None
-        except errors.ClientError as e:
-            code = getattr(e, "code", None)
-            if code == 400:
-                logger.error("Gemini rejected the request (invalid API key or bad request): %s", e)
-            elif code == 403:
-                logger.error("Gemini permission denied (check API key restrictions/billing): %s", e)
-            elif code == 429:
-                logger.warning("Gemini quota/rate limit exceeded: %s", e)
-            else:
-                logger.error("Gemini client error (%s): %s", code, e)
-            return None
-        except errors.ServerError as e:
-            logger.error("Gemini server-side error: %s", e)
+            data = resp.json()
+            text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            return text or None
+        except httpx.TimeoutException:
+            logger.error("Gemini request timed out (model=%s)", self.model)
             return None
         except Exception:
             logger.exception("Unexpected Gemini failure")
