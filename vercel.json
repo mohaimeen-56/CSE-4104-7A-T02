@@ -1,6 +1,5 @@
 {
-  "buildCommand": "cd frontend && npm install --omit=optional && npm run build",
-  "outputDirectory": "frontend/dist",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
