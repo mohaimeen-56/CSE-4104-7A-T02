@@ -33,12 +33,15 @@ logger = logging.getLogger("SalesIQ")
 # Schema is managed exclusively via Alembic migrations (see backend/alembic/versions).
 # Run `alembic upgrade head` before starting the server.
 
+_is_production = settings.ENVIRONMENT == "production"
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.PROJECT_VERSION,
     description="AI Sales Analytics Dashboard: An Intelligent, Data-Driven Business Intelligence System (CSE4104-7A-T02)",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
 
 # CORS Middleware
