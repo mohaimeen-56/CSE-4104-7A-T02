@@ -169,8 +169,16 @@ CSE4104_T2/
 │   ├── schemas.sql       # PostgreSQL (Supabase) schema definition
 │   └── seed.sql          # Seed SQL script
 ├── docs/
+│   ├── diagrams/         # System diagrams (Architecture, ERD, Use Case in PDF)
+│   ├── reports/          # Course & project reports (Proposal, SRS, Testing, Bug Reports in PDF)
 │   ├── API.md            # REST API documentation
-│   ├── SETUP.md          # Setup & deployment guide
-│   └── ARCHITECTURE.md   # Architectural design specification
+│   ├── ARCHITECTURE.md   # Architectural design specification
+│   ├── DEPLOYMENT.md     # Production deployment guide (Supabase, Render, Vercel, Cloudflare)
+│   ├── SETUP.md          # Setup & local execution guide
+│   └── README.md         # Documentation index
+├── vercel.json           # Vercel deployment configuration
+├── wrangler.jsonc        # Cloudflare Pages / Workers configuration
+├── render.yaml           # Render deployment blueprint
+├── netlify.toml          # Netlify deployment configuration
 └── README.md
 ```
