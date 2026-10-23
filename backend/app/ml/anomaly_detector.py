@@ -98,7 +98,7 @@ class AnomalyDetector:
                     )
 
         # 2. Product-specific anomalies (e.g. abrupt decline or low sales volume)
-        products = db.query(Product).filter(Product.is_active == True).all()
+        products = db.query(Product).all()
         for prod in products:
             if prod.stock < 20:
                 anomalies.append(
