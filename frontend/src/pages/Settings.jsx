@@ -5,6 +5,7 @@ import { RoleBadge } from '../components/common/RoleBadge'
 import { UserAvatar } from '../components/common/UserAvatar'
 import { AdminMaintenancePanel } from '../components/admin/AdminMaintenancePanel'
 import { AdminDangerZonePanel } from '../components/admin/AdminDangerZonePanel'
+import { SystemConnectivityPanel } from '../components/common/SystemConnectivityPanel'
 import { User, Lock, LogOut, CheckCircle2, Shield, KeyRound, Plus, Trash2, Copy, Check, Clock } from 'lucide-react'
 
 const AdminInvitePanel = () => {
@@ -343,6 +344,9 @@ export const Settings = () => {
           <AdminDangerZonePanel />
         </div>
       )}
+
+      {/* Live System Diagnostics */}
+      <SystemConnectivityPanel />
 
       {/* Project & Team Credits */}
       <div className="bg-slate-50 border border-border rounded-xl p-4 text-xs text-text-muted space-y-1">

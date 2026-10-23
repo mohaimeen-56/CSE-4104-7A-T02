@@ -155,6 +155,7 @@ class BulkDeleteRequest(BaseModel):
 
 
 @router.delete("/data/sales/all", response_model=APIResponse[dict])
+@router.post("/data/sales/all", response_model=APIResponse[dict])
 def delete_all_sales(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
@@ -170,6 +171,7 @@ def delete_all_sales(
 
 
 @router.delete("/data/sales/bulk", response_model=APIResponse[dict])
+@router.post("/data/sales/bulk", response_model=APIResponse[dict])
 def delete_selected_sales(
     payload: BulkDeleteRequest,
     db: Session = Depends(get_db),

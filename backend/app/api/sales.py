@@ -2,6 +2,7 @@ import math
 from typing import Optional, List
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.sale import SaleCreate, SaleUpdate, SaleResponse, CsvUploadResponse
@@ -10,6 +11,7 @@ from app.services.sales_service import SalesService
 from app.services.csv_service import CsvService
 from app.core.deps import get_current_user, require_manager_or_admin, require_admin
 from app.models.user import User
+from app.models.sale import Sale
 
 router = APIRouter(prefix="/sales", tags=["Sales"])
 
@@ -95,6 +97,49 @@ def update_sale(
         success=True,
         message="Sale record updated successfully",
         data=SaleResponse.model_validate(sale)
+    )
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: List[int]
+
+
+@router.delete("/all", response_model=APIResponse[dict])
+@router.post("/delete-all", response_model=APIResponse[dict])
+def delete_all_sales(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Permanently delete ALL sales records. Admin only. This is irreversible."""
+    deleted_count = db.query(Sale).delete(synchronize_session=False)
+    db.commit()
+    return APIResponse(
+        success=True,
+        message=f"All {deleted_count} sales records have been permanently deleted.",
+        data={"deleted_count": deleted_count},
+    )
+
+
+@router.delete("/bulk", response_model=APIResponse[dict])
+@router.post("/bulk-delete", response_model=APIResponse[dict])
+def delete_selected_sales(
+    payload: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Permanently delete a specific set of sales records by ID. Admin only."""
+    if not payload.ids:
+        raise HTTPException(status_code=400, detail="No IDs provided.")
+    deleted_count = (
+        db.query(Sale)
+        .filter(Sale.id.in_(payload.ids))
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return APIResponse(
+        success=True,
+        message=f"{deleted_count} sale(s) permanently deleted.",
+        data={"deleted_count": deleted_count, "requested_ids": payload.ids},
     )
 
 

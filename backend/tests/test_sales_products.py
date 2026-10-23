@@ -57,3 +57,31 @@ def test_delete_sale_admin_only(client, manager_headers, admin_headers):
     # Admin can delete sale
     res_adm = client.delete('/api/sales/1', headers=admin_headers)
     assert res_adm.status_code == 200
+
+
+def test_bulk_and_all_sales_delete(client, manager_headers, admin_headers):
+    # Manager cannot delete bulk sales
+    res_mgr_bulk = client.post('/api/sales/bulk-delete', json={'ids': [2, 3]}, headers=manager_headers)
+    assert res_mgr_bulk.status_code == 403
+
+    # Admin can delete bulk sales via POST /api/sales/bulk-delete
+    res_adm_bulk = client.post('/api/sales/bulk-delete', json={'ids': [2, 3]}, headers=admin_headers)
+    assert res_adm_bulk.status_code == 200
+    assert res_adm_bulk.json()['success'] is True
+
+    # Admin can delete bulk sales via POST /api/admin/data/sales/bulk
+    res_adm_bulk_admin = client.post('/api/admin/data/sales/bulk', json={'ids': [4]}, headers=admin_headers)
+    assert res_adm_bulk_admin.status_code == 200
+
+    # Manager cannot delete all sales
+    res_mgr_all = client.delete('/api/sales/all', headers=manager_headers)
+    assert res_mgr_all.status_code == 403
+
+    # Admin can delete all sales via DELETE /api/sales/all
+    res_adm_all = client.delete('/api/sales/all', headers=admin_headers)
+    assert res_adm_all.status_code == 200
+    assert res_adm_all.json()['success'] is True
+
+    # Admin can delete all sales via DELETE /api/admin/data/sales/all
+    res_adm_all_admin = client.delete('/api/admin/data/sales/all', headers=admin_headers)
+    assert res_adm_all_admin.status_code == 200

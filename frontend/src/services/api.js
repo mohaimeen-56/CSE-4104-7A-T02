@@ -1,6 +1,15 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+let rawBase = import.meta.env.VITE_API_BASE_URL || '/api'
+// Normalize baseUrl: if someone configured 'https://my-backend.onrender.com' without '/api',
+// or if there's trailing slashes, ensure it cleanly ends with '/api'
+if (rawBase !== '/api') {
+  rawBase = rawBase.replace(/\/+$/, '')
+  if (!rawBase.endsWith('/api')) {
+    rawBase += '/api'
+  }
+}
+const API_BASE_URL = rawBase
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -54,12 +63,18 @@ export const authApi = {
   updateProfile: (data) => api.put('/users/me', data),
 }
 
+export const healthApi = {
+  check: () => api.get('/health'),
+}
+
 export const salesApi = {
   list: (params) => api.get('/sales', { params }),
   getById: (id) => api.get(`/sales/${id}`),
   create: (data) => api.post('/sales', data),
   update: (id, data) => api.put(`/sales/${id}`, data),
   delete: (id) => api.delete(`/sales/${id}`),
+  deleteAll: () => adminApi.deleteAllSales(),
+  deleteBulk: (ids) => adminApi.deleteBulkSales(ids),
   uploadCsv: (formData) =>
     api.post('/sales/upload-csv', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -109,8 +124,28 @@ export const adminApi = {
   generateInviteCode: () => api.post('/admin/invite-codes'),
   listInviteCodes: () => api.get('/admin/invite-codes'),
   revokeInviteCode: (id) => api.delete(`/admin/invite-codes/${id}`),
-  deleteAllSales: () => api.delete('/admin/data/sales/all'),
-  deleteBulkSales: (ids) => api.delete('/admin/data/sales/bulk', { data: { ids } }),
+  deleteAllSales: async () => {
+    try {
+      return await api.delete('/sales/all')
+    } catch (err) {
+      try {
+        return await api.delete('/admin/data/sales/all')
+      } catch (err2) {
+        return await api.post('/sales/delete-all')
+      }
+    }
+  },
+  deleteBulkSales: async (ids) => {
+    try {
+      return await api.post('/sales/bulk-delete', { ids })
+    } catch (err) {
+      try {
+        return await api.delete('/sales/bulk', { data: { ids } })
+      } catch (err2) {
+        return await api.delete('/admin/data/sales/bulk', { data: { ids } })
+      }
+    }
+  },
 }
 
 export const aiApi = {
