@@ -1,3 +1,4 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
@@ -5,6 +6,10 @@ from app.core.config import settings
 _db_url = settings.DATABASE_URL
 if _db_url.startswith("postgres://"):
     _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+
+# On Vercel serverless, /var/task is read-only; fallback to writable /tmp for SQLite
+if _db_url.startswith("sqlite") and (os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")):
+    _db_url = "sqlite:////tmp/sales_dashboard.db"
 
 _is_sqlite = _db_url.startswith("sqlite")
 

@@ -53,6 +53,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Vercel rewrite path corrector: if Vercel internally routes to /api/index.py, restore original path
+@app.middleware("http")
+async def vercel_path_corrector(request: Request, call_next):
+    matched_path = request.headers.get("x-matched-path")
+    if matched_path and request.url.path in ("/api/index.py", "/api/index", "/index.py"):
+        clean_path = matched_path.split("?")[0]
+        request.scope["path"] = clean_path
+    return await call_next(request)
+
 # Global maintenance-mode enforcement (backend-authoritative, not just a frontend screen)
 app.add_middleware(MaintenanceMiddleware)
 
@@ -125,8 +134,11 @@ app.include_router(admin_router, prefix="/api")
 
 
 @app.get("/")
+@app.get("/api")
+@app.get("/api/index.py")
 def root():
     return {
+        "status": "healthy",
         "message": "Welcome to AI Sales Analytics Dashboard API (SalesIQ - CSE4104-7A-T02)",
         "docs": "/docs",
         "health": "/api/health",
