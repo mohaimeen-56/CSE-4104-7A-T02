@@ -10,7 +10,22 @@ for p in [str(backend_dir), str(root_dir)]:
         sys.path.insert(0, p)
 
 try:
-    from app.main import app
+    from app.main import app as fastapi_app
+
+    # ASGI wrapper to handle Vercel internal rewritten destination path routing
+    async def app(scope, receive, send):
+        if scope.get("type") == "http":
+            headers = dict(scope.get("headers", []))
+            matched = headers.get(b"x-matched-path")
+            if matched:
+                try:
+                    orig_path = matched.decode("utf-8").split("?")[0]
+                    if orig_path:
+                        scope["path"] = orig_path
+                except Exception:
+                    pass
+        await fastapi_app(scope, receive, send)
+
 except Exception as exc:
     import traceback
     err_trace = traceback.format_exc()
