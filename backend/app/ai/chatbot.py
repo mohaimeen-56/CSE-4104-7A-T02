@@ -161,7 +161,14 @@ class SalesChatbot:
         elif intent == "recommendations":
             kpis = AnalyticsService.get_summary_kpis(db, start_date=start_date, end_date=end_date)
             top_prods = AnalyticsService.get_sales_by_product(db, start_date=start_date, end_date=end_date, limit=3)
-            low_stock = [{"name": p.name, "stock": p.stock} for p in db.query(Product).filter(Product.stock < 20).all()]
+            active_sales_pids = [r[0] for r in db.query(Sale.product_id).distinct().all()]
+            low_stock = [
+                {"name": p.name, "stock": p.stock}
+                for p in db.query(Product).filter(
+                    Product.id.in_(active_sales_pids) if active_sales_pids else True,
+                    Product.stock < 20
+                ).all()
+            ]
             recs = GroundedAIEngine.generate_recommendations({
                 "kpis": kpis.model_dump(), "top_products": [p.model_dump() for p in top_prods], "low_stock_products": low_stock,
             })

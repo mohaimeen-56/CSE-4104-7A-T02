@@ -33,9 +33,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
 
     # AI Configuration
-    AI_PROVIDER: str = "grounded"  # "gemini", "openai", or "grounded"
+    AI_PROVIDER: str = "gemini"  # "gemini", "openai", "deepseek", or "grounded"
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-flash-latest"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
     OPENAI_API_KEY: str = ""
     DEEPSEEK_API_KEY: str = ""
 

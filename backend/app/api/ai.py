@@ -20,6 +20,7 @@ from app.ai.chatbot import SalesChatbot, get_ai_provider
 from app.ai.grounded_engine import GroundedAIEngine
 from app.services.chat_history_service import ChatHistoryService
 from app.models.product import Product
+from app.models.sale import Sale
 from app.models.user import User
 from app.core.deps import get_current_user
 
@@ -66,9 +67,13 @@ async def generate_ai_insight(
     categories = AnalyticsService.get_sales_by_category(db, start_date, end_date)
     regions = AnalyticsService.get_sales_by_region(db, start_date, end_date)
 
+    active_sales_pids = [r[0] for r in db.query(Sale.product_id).distinct().all()]
     low_stock_prods = [
         {"name": p.name, "stock": p.stock}
-        for p in db.query(Product).filter(Product.stock < 20).all()
+        for p in db.query(Product).filter(
+            Product.id.in_(active_sales_pids) if active_sales_pids else True,
+            Product.stock < 20
+        ).all()
     ]
 
     context = {

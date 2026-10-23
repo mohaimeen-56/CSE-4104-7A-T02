@@ -97,8 +97,9 @@ class AnomalyDetector:
                         )
                     )
 
-        # 2. Product-specific anomalies (e.g. abrupt decline or low sales volume)
-        products = db.query(Product).all()
+        # 2. Product-specific anomalies (for products with sales in the dataset)
+        active_sales_pids = [r[0] for r in db.query(Sale.product_id).distinct().all()]
+        products = db.query(Product).filter(Product.id.in_(active_sales_pids)).all() if active_sales_pids else db.query(Product).all()
         for prod in products:
             if prod.stock < 20:
                 anomalies.append(

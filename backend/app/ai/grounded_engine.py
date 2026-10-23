@@ -271,10 +271,12 @@ class GroundedAIEngine(AIProvider):
 
         aov = kpis.get("average_order_value", 0.0)
         if aov < 2000:
+            sample_prods = [p["product_name"] for p in top_products[:2]]
+            sample_hint = f" (e.g. bundling {' + '.join(sample_prods)})" if len(sample_prods) >= 2 else ""
             recommendations.append(
                 RecommendationItem(
-                    id="rec-promo-1", category="promotion", title="Launch Accessory Bundle Promotion",
-                    action="Introduce package discounts (e.g. Mouse + Keyboard or Phone + Earbuds) to lift basket size.",
+                    id="rec-promo-1", category="promotion", title="Launch Product Bundle Promotion",
+                    action=f"Introduce package discounts{sample_hint} to lift basket size.",
                     impact="Expected to increase Average Order Value by 12-18%.", priority="medium",
                 )
             )

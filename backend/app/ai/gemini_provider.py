@@ -26,7 +26,7 @@ SYSTEM_PERSONA = (
 class GeminiProvider(AIProvider):
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY
-        self.model = settings.GEMINI_MODEL or "gemini-2.0-flash"
+        self.model = settings.GEMINI_MODEL or "gemini-3.5-flash-lite"
         self.fallback = GroundedAIEngine()
         if not self.api_key:
             logger.warning("GEMINI_API_KEY not set; Gemini provider will use the offline fallback engine.")
@@ -40,8 +40,13 @@ class GeminiProvider(AIProvider):
             "generationConfig": {"maxOutputTokens": 1024, "temperature": 0.4},
         }
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=25.0) as client:
                 resp = await client.post(url, json=payload)
+                if resp.status_code != 200 and self.model != "gemini-3.5-flash-lite":
+                    logger.warning("Gemini model %s returned %s, falling back to gemini-3.5-flash-lite", self.model, resp.status_code)
+                    fallback_url = f"{GEMINI_API_BASE}/gemini-3.5-flash-lite:generateContent?key={self.api_key}"
+                    resp = await client.post(fallback_url, json=payload)
+
             if resp.status_code != 200:
                 logger.error("Gemini API error %s: %s", resp.status_code, resp.text[:300])
                 return None
