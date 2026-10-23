@@ -7,6 +7,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
 from app.db.session import engine, Base
+from sqlalchemy import text
 import app.models  # Ensure all SQLAlchemy models are registered
 from app.core.maintenance import MaintenanceMiddleware
 
@@ -32,6 +33,18 @@ logger = logging.getLogger("SalesIQ")
 
 # Schema is managed exclusively via Alembic migrations (see backend/alembic/versions).
 # Run `alembic upgrade head` before starting the server.
+
+@app.on_event("startup")
+def ensure_schema_compatibility():
+    """Ensure newly introduced columns exist in tables without breaking legacy instances."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE ai_logs ADD COLUMN IF NOT EXISTS conversation_id VARCHAR(36);"))
+            conn.execute(text("ALTER TABLE ai_logs ADD COLUMN IF NOT EXISTS route VARCHAR(20);"))
+            conn.execute(text("ALTER TABLE ai_logs ADD COLUMN IF NOT EXISTS intent VARCHAR(50);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_logs_conversation_id ON ai_logs (conversation_id);"))
+    except Exception as e:
+        logger.warning(f"Schema compatibility check warning: {e}")
 
 _is_production = settings.ENVIRONMENT == "production"
 
