@@ -2,19 +2,23 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
 
-_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+_db_url = settings.DATABASE_URL
+if _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+
+_is_sqlite = _db_url.startswith("sqlite")
 
 if _is_sqlite:
     engine = create_engine(
-        settings.DATABASE_URL,
+        _db_url,
         connect_args={"check_same_thread": False},
         echo=False,
         future=True,
     )
 else:
-    # PostgreSQL / Supabase — use a modest pool sized for free-tier limits
+    # PostgreSQL / Supabase — pool settings optimized for both servers and serverless functions (Vercel)
     engine = create_engine(
-        settings.DATABASE_URL,
+        _db_url,
         pool_size=5,
         max_overflow=10,
         pool_timeout=30,

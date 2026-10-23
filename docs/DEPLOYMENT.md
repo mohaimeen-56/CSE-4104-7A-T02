@@ -4,308 +4,172 @@
 
 ---
 
-## Architecture
+## Active Production Architecture
 
 ```
 Browser
   │
   ▼
-Vercel (React Frontend)
+Cloudflare Pages (React Frontend SPA)
   │ HTTPS REST
   ▼
-Render (FastAPI Backend)
-  ├──► Supabase (PostgreSQL)
-  └──► Gemini API (AI)
+Vercel (FastAPI Python Backend / Serverless)
+  ├──► Supabase (PostgreSQL Database)
+  └──► Google Gemini API (AI Service)
 ```
 
-**Alternative:** Netlify instead of Vercel · Railway instead of Render
+**Alternative Platforms:** Render / Railway for Backend · Netlify / Vercel for Frontend
 
 ---
 
 ## Environment Variable Matrix
 
-| Variable | Backend (Render) | Frontend (Vercel) | Type |
+| Variable | Backend (Vercel) | Frontend (Cloudflare) | Type |
 |---|---|---|---|
 | `DATABASE_URL` | ✅ Required | ❌ Never | SECRET |
 | `JWT_SECRET` | ✅ Required | ❌ Never | SECRET |
-| `AI_PROVIDER` | ✅ Required | ❌ Never | config |
+| `AI_PROVIDER` | ✅ Required (`gemini`) | ❌ Never | config |
 | `GEMINI_API_KEY` | ✅ Required | ❌ Never | SECRET |
-| `GEMINI_MODEL` | ✅ Required | ❌ Never | config |
-| `CORS_ORIGINS` | ✅ Required | ❌ Never | config |
+| `GEMINI_MODEL` | ✅ Required (`gemini-3.5-flash-lite`) | ❌ Never | config |
+| `CORS_ORIGINS` | ✅ Required (Cloudflare URL) | ❌ Never | config |
 | `ENVIRONMENT` | ✅ `production` | ❌ Never | config |
 | `LOG_LEVEL` | ✅ `INFO` | ❌ Never | config |
-| `VITE_API_BASE_URL` | ❌ Never | ✅ Required | PUBLIC |
+| `VITE_API_BASE_URL` | ❌ Never | ✅ Required (Vercel URL) | PUBLIC |
 
-> `VITE_*` variables are bundled into the browser JavaScript. **Never put secrets in them.**
-
----
-
-## Prerequisites
-
-- GitHub account with this repository pushed
-- Google account (for Gemini API key)
-- Supabase account (free tier: supabase.com)
-- Render account (free tier: render.com)
-- Vercel account (free tier: vercel.com)
+> `VITE_*` variables are bundled into the browser JavaScript. **Never put database secrets or API keys in them.**
 
 ---
 
 ## Step 1 — Supabase Database
 
-### MANUAL ACTION REQUIRED
-
-1. Go to **supabase.com** → New Project
-2. Choose a name (e.g. `salesiq`), set a strong database password, choose nearest region
-3. Wait for project to provision (~2 minutes)
-4. Go to **Project Settings → Database**
-5. Copy the **Connection String** (URI format):
-   ```
+1. Go to **[supabase.com](https://supabase.com)** → Create New Project (e.g. `salesiq`).
+2. Set a strong database password and choose your nearest region.
+3. Wait for database provisioning (~2 minutes).
+4. Go to **Project Settings → Database → Connection String** (URI format):
+   ```text
    postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-REF].supabase.co:5432/postgres
    ```
-6. Append `?sslmode=require` to the end:
-   ```
+5. Append `?sslmode=require` to the end:
+   ```text
    postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-REF].supabase.co:5432/postgres?sslmode=require
    ```
-   Save this — it becomes `DATABASE_URL` on Render.
+   Save this — it becomes `DATABASE_URL` in Vercel.
 
-### Run Migrations Against Supabase
+### Initialize Tables and Seed Initial Data
 
-After backend is deployed (Step 2), Render will run `alembic upgrade head` automatically via the build step — **or** you can run it manually from your local machine:
-
-```bash
-cd backend
-DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres?sslmode=require" \
-  alembic upgrade head
-```
-
-### Seed Initial Data (Optional)
-
-To seed users, products, regions, and sample sales:
+Run migrations or seed directly against Supabase from your local terminal:
 
 ```bash
 cd backend
-DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres?sslmode=require" \
-  python seed.py
+set DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres?sslmode=require
+python seed.py
 ```
-
-> ⚠️ Seed creates demo users with known passwords (`admin123`, `manager123`, `viewer123`).
-> Change these passwords immediately after seeding in production.
+*(On Linux/macOS use `export DATABASE_URL=...`)*
 
 ---
 
-## Step 2 — Render Backend
+## Step 2 — Vercel Backend (FastAPI Serverless)
 
-### MANUAL ACTION REQUIRED
+The repository includes `api/index.py` and `vercel.json` configured for Vercel Python Serverless deployment.
 
-1. Go to **render.com** → New → **Web Service**
-2. Connect your GitHub account and select repository `CSE-4104-7A-T02`
-3. Configure:
-   - **Name:** `salesiq-backend`
-   - **Root Directory:** `backend`
-   - **Runtime:** `Python 3`
-   - **Build Command:** `pip install -r requirements.txt && alembic upgrade head`
-   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - **Python Version:** `3.11`
-
+1. Go to **[vercel.com](https://vercel.com)** → **Add New... → Project**.
+2. Select your repository `CSE-4104-7A-T02`.
+3. **Configure Project:**
+   - **Framework Preset:** Other
+   - **Root Directory:** `./` (Repository root — `vercel.json` and `api/index.py` are at the root)
 4. Under **Environment Variables**, add:
 
    | Key | Value |
    |---|---|
-   | `DATABASE_URL` | *(paste Supabase connection string with `?sslmode=require`)* |
-   | `JWT_SECRET` | *(generate a random 64-char string — see below)* |
+   | `DATABASE_URL` | `postgresql://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres?sslmode=require` |
+   | `JWT_SECRET` | *(64-character random hex string)* |
    | `AI_PROVIDER` | `gemini` |
-   | `GEMINI_API_KEY` | *(your Google AI Studio key)* |
-   | `GEMINI_MODEL` | `gemini-flash-latest` |
-   | `CORS_ORIGINS` | *(leave blank for now, update after frontend deploy)* |
+   | `GEMINI_API_KEY` | *(Google AI Studio key)* |
+   | `GEMINI_MODEL` | `gemini-3.5-flash-lite` |
+   | `CORS_ORIGINS` | `*` *(or your Cloudflare Pages domain once known)* |
    | `ENVIRONMENT` | `production` |
    | `LOG_LEVEL` | `INFO` |
 
-5. Click **Create Web Service**
-
-### Generate JWT_SECRET
-
-Run this locally to generate a strong secret:
-```bash
-python -c "import secrets; print(secrets.token_hex(64))"
-```
-
-### After Deployment
-
-Note the Render URL: `https://salesiq-backend.onrender.com`
-
-Verify:
-```
-https://salesiq-backend.onrender.com/api/health
-```
-
-Expected response:
-```json
-{
-  "status": "healthy",
-  "database": "healthy",
-  "ai_provider": "gemini",
-  "ai_configured": true
-}
-```
-
-> ⚠️ Render free tier **sleeps after 15 minutes of inactivity**. The first request after sleep takes ~30 seconds. Upgrade to a paid plan to eliminate this.
+5. Click **Deploy**.
+6. Note your Vercel Backend URL: `https://your-backend.vercel.app`.
+7. Verify health:
+   ```text
+   https://your-backend.vercel.app/api/health
+   ```
+   Expected JSON response:
+   ```json
+   {
+     "status": "healthy",
+     "database": "healthy",
+     "ai_provider": "gemini",
+     "ai_configured": true
+   }
+   ```
 
 ---
 
-## Step 3 — Update CORS After Backend is Live
+## Step 3 — Cloudflare Pages Frontend
 
-### MANUAL ACTION REQUIRED
-
-Once you know the Render backend URL, update `CORS_ORIGINS` in Render environment variables:
-
-```
-CORS_ORIGINS=https://your-app.vercel.app
-```
-
-(Do this after you know the Vercel URL from Step 4.)
-
----
-
-## Step 4 — Vercel Frontend
-
-### MANUAL ACTION REQUIRED
-
-1. Go to **vercel.com** → New Project → Import from GitHub
-2. Select repository `CSE-4104-7A-T02`
-3. Configure:
-   - **Framework Preset:** Vite
-   - **Root Directory:** `frontend`
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
-
-4. Under **Environment Variables**, add:
-
-   | Key | Value |
+1. Go to **[dash.cloudflare.com](https://dash.cloudflare.com)** → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**.
+2. Select repository `CSE-4104-7A-T02`.
+3. **Build settings:**
+   - **Framework Preset:** `Vite`
+   - **Root directory:** `frontend`
+   - **Build command:** `npm run build`
+   - **Build output directory:** `dist`
+4. Under **Environment Variables (Production)**, add:
+   
+   | Variable | Value |
    |---|---|
-   | `VITE_API_BASE_URL` | `https://salesiq-backend.onrender.com` |
+   | `VITE_API_BASE_URL` | `https://your-backend.vercel.app` |
 
-   > Use your actual Render URL. Do NOT add trailing slash.
+   *(No trailing slash. The frontend client automatically appends `/api`.)*
 
-5. Click **Deploy**
+5. Click **Save and Deploy**.
+6. Cloudflare provides your domain: `https://cse-4104-7a-t02.pages.dev` (or custom domain).
 
-6. Note the Vercel URL: `https://your-app.vercel.app`
-
-7. Go back to **Render → Environment Variables** and update:
+### Update CORS in Vercel Backend
+Once you have your Cloudflare URL:
+1. Go to **Vercel → Project Settings → Environment Variables**.
+2. Set `CORS_ORIGINS`:
+   ```text
+   https://cse-4104-7a-t02.pages.dev
    ```
-   CORS_ORIGINS=https://your-app.vercel.app
-   ```
-   Then click **Manual Deploy → Deploy latest commit** on Render.
+3. Redeploy the latest commit on Vercel.
 
 ---
 
-## Step 5 — Verify Full Application
+## Step 4 — Alternative: Deploy Frontend via Wrangler CLI
 
-Open the Vercel URL in Chrome and test:
+If deploying via Cloudflare Wrangler command line:
 
-```
-Login with admin credentials
-  ↓
-Dashboard loads KPIs
-  ↓
-Sales Records page
-  ↓
-AI Insights → Generate
-  ↓
-Chatbot: "Hello"
-  ↓
-Chatbot: "What was our best-selling product?"
-  ↓
-Forecast page
-  ↓
-Reports → Export CSV
-  ↓
-Reports → Export PDF
-  ↓
-Notifications page
-  ↓
-Settings page
-```
-
-If any step fails, check Chrome DevTools → Network for the failing request and its response.
-
----
-
-## Alternative: Netlify (instead of Vercel)
-
-1. **netlify.com** → New Site → Import from Git
-2. Select repository, branch: `main`
-3. Build settings are read from `netlify.toml` automatically:
-   - Base: `frontend`
-   - Build: `npm install && npm run build`
-   - Publish: `dist`
-4. Add environment variable: `VITE_API_BASE_URL=https://your-backend.onrender.com`
-5. Deploy
-
-The `netlify.toml` already includes SPA redirect rules so direct URLs like `/dashboard` work correctly.
-
----
-
-## Alternative: Railway (instead of Render)
-
-1. **railway.app** → New Project → Deploy from GitHub
-2. Select repository
-3. Add service → select the repo
-4. Set environment variables (same as Render above)
-5. Set start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-6. Set root directory: `backend`
-
-Railway auto-detects Python and installs requirements. It does not sleep on the free tier (but has a monthly usage limit).
-
----
-
-## Rollback
-
-**Frontend (Vercel):** Vercel → Project → Deployments → click any previous deployment → "..." → Promote to Production
-
-**Backend (Render):** Render → Service → Deploys → click previous deploy → Rollback
-
-**Database:** Supabase does not auto-rollback. Before any destructive migration:
 ```bash
-alembic downgrade -1
+# From repository root:
+npm install -g wrangler
+cd frontend
+npm run build
+cd ..
+npx wrangler pages deploy frontend/dist --project-name=cse-4104-7a-t02
+```
+Or with Workers static assets:
+```bash
+npx wrangler deploy
 ```
 
 ---
 
-## Security Checklist
+## Step 5 — Alternative: Render Backend / Netlify Frontend
 
-- [ ] `backend/.env` is in `.gitignore` and NOT committed to GitHub
-- [ ] `JWT_SECRET` is a randomly generated 64-char hex string, not the default
-- [ ] `GEMINI_API_KEY` is only in Render environment variables
-- [ ] `DATABASE_URL` is only in Render environment variables
-- [ ] `CORS_ORIGINS` is set to exact Vercel/Netlify URL (no wildcard)
-- [ ] `ENVIRONMENT=production` is set on Render (disables Swagger UI)
-- [ ] Frontend build output (`frontend/dist`) contains no secrets
-- [ ] Supabase database password is strong and unique
-- [ ] Demo user passwords changed after seeding
+- **Render (Backend):** Blueprint in `render.yaml`. Build: `pip install -r requirements.txt`, Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+- **Netlify (Frontend):** Blueprint in `netlify.toml`. Base: `frontend`, Build: `npm install && npm run build`, Publish: `dist`.
 
 ---
 
-## Troubleshooting
+## Verification Checklist
 
-| Symptom | Likely Cause | Fix |
-|---|---|---|
-| Frontend API calls fail | `VITE_API_BASE_URL` wrong or not set | Set to Render HTTPS URL in Vercel env vars, redeploy frontend |
-| CORS error in browser | `CORS_ORIGINS` doesn't match frontend URL | Update on Render, redeploy backend |
-| `502 Bad Gateway` on Render | Backend crashed on startup | Check Render logs — likely DB connection failure |
-| DB connection error | `DATABASE_URL` missing `?sslmode=require` | Append it to connection string on Render |
-| Chatbot gives generic answers | `GEMINI_API_KEY` not set or wrong | Check `AI_PROVIDER=gemini` and key on Render |
-| Render service sleeps | Free tier limitation | Upgrade to Render Starter plan ($7/month) |
-| Alembic migration fails | Table already exists (from manual `create_all`) | Run `alembic stamp head` then `alembic upgrade head` |
-| `/dashboard` returns 404 on Netlify | SPA redirect missing | `netlify.toml` already handles this |
-
----
-
-## Free Tier Limits Reference
-
-| Service | Free Tier Limit |
-|---|---|
-| Render | 750 hrs/month, sleeps after 15 min idle |
-| Supabase | 500MB DB, 2GB bandwidth, 50,000 MAU |
-| Vercel | 100GB bandwidth, unlimited deployments |
-| Netlify | 100GB bandwidth, 300 build minutes |
-| Gemini API | 1,500 requests/day (Flash model) |
+1. Open Cloudflare URL (`https://your-app.pages.dev`).
+2. Log in with demo credentials (`admin@example.com` / `admin123` or seeded account).
+3. Confirm KPI cards load on the Dashboard.
+4. Test AI Chatbot ("What was our best-selling product?").
+5. Test PDF and CSV export.
+6. Verify Status Indicator (System Diagnostics) shows green across Frontend, Backend (Vercel), and Database (Supabase).

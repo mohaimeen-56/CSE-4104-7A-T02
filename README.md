@@ -175,12 +175,12 @@ CSE4104_T2/
 │   ├── scripts/          # Report & documentation generator scripts
 │   ├── API.md            # REST API documentation
 │   ├── ARCHITECTURE.md   # Architectural design specification
-│   ├── DEPLOYMENT.md     # Production deployment guide (Supabase, Render, Vercel, Cloudflare)
+│   ├── DEPLOYMENT.md     # Production deployment guide (Vercel Backend, Cloudflare Frontend, Supabase DB)
 │   ├── SETUP.md          # Setup & local execution guide
 │   └── README.md         # Documentation index
 ├── pytest.ini            # Root pytest configuration
-├── vercel.json           # Vercel deployment configuration
-├── wrangler.jsonc        # Cloudflare Pages / Workers configuration
+├── vercel.json           # Vercel backend deployment configuration
+├── wrangler.jsonc        # Cloudflare Pages / Workers frontend configuration
 ├── render.yaml           # Render deployment blueprint
 ├── netlify.toml          # Netlify deployment configuration
 └── README.md
