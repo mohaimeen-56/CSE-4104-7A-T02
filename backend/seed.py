@@ -15,6 +15,8 @@ from app.models.product import Product
 from app.models.region import Region
 from app.models.sale import Sale
 from app.models.notification import Notification
+from app.models.invite_code import AdminInviteCode
+from app.models.ai_log import AILog
 from app.core.security import get_password_hash
 
 DHAKA_TZ = ZoneInfo("Asia/Dhaka")
@@ -36,6 +38,8 @@ def seed_database():
         # 1. Clear existing data in reverse dependency order
         print("Cleaning up old records...")
         db.query(Notification).delete()
+        db.query(AILog).delete()
+        db.query(AdminInviteCode).delete()
         db.query(Sale).delete()
         db.query(Product).delete()
         db.query(Region).delete()
