@@ -40,7 +40,7 @@ class GeminiProvider(AIProvider):
             "generationConfig": {"maxOutputTokens": 1024, "temperature": 0.4},
         }
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=45.0) as client:
                 resp = await client.post(url, json=payload)
             if resp.status_code != 200:
                 logger.error("Gemini API error %s: %s", resp.status_code, resp.text[:300])

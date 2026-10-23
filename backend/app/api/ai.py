@@ -68,7 +68,7 @@ async def generate_ai_insight(
 
     low_stock_prods = [
         {"name": p.name, "stock": p.stock}
-        for p in db.query(Product).filter(Product.stock < 20).all()
+        for p in db.query(Product).filter(Product.is_active == True, Product.stock < 20).all()
     ]
 
     context = {

@@ -109,6 +109,8 @@ export const adminApi = {
   generateInviteCode: () => api.post('/admin/invite-codes'),
   listInviteCodes: () => api.get('/admin/invite-codes'),
   revokeInviteCode: (id) => api.delete(`/admin/invite-codes/${id}`),
+  deleteAllSales: () => api.delete('/admin/data/sales/all'),
+  deleteBulkSales: (ids) => api.delete('/admin/data/sales/bulk', { data: { ids } }),
 }
 
 export const aiApi = {

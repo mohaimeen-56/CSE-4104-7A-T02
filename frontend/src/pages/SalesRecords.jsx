@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { salesApi, regionsApi } from '../services/api'
+import { salesApi, regionsApi, adminApi } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { AddSaleModal } from '../components/sales/AddSaleModal'
 import { formatCurrency, formatDate, formatNumber } from '../utils/formatters'
@@ -39,6 +39,10 @@ export const SalesRecords = () => {
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSale, setEditingSale] = useState(null)
+
+  // Row selection (admin only)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const fetchSales = useCallback(async () => {
     try {
@@ -83,9 +87,41 @@ export const SalesRecords = () => {
     if (!window.confirm(`Are you sure you want to delete this sale record for "${productName}"?`)) return
     try {
       await salesApi.delete(id)
+      setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n })
       fetchSales()
     } catch (err) {
       alert(err.message || 'Failed to delete sale record')
+    }
+  }
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === sales.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(sales.map((s) => s.id)))
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return
+    if (!window.confirm(`Permanently delete ${selectedIds.size} selected sale(s)? This cannot be undone.`)) return
+    setBulkDeleting(true)
+    try {
+      await adminApi.deleteBulkSales(Array.from(selectedIds))
+      setSelectedIds(new Set())
+      fetchSales()
+    } catch (err) {
+      alert(err.message || 'Failed to delete selected records')
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
@@ -113,6 +149,16 @@ export const SalesRecords = () => {
 
         {canMutate && (
           <div className="flex items-center gap-2">
+            {isAdmin && selectedIds.size > 0 && (
+              <button
+                onClick={handleDeleteSelected}
+                disabled={bulkDeleting}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-danger hover:opacity-90 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-xs transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{bulkDeleting ? 'Deleting…' : `Delete Selected (${selectedIds.size})`}</span>
+              </button>
+            )}
             <Link
               to="/sales/upload"
               className="flex items-center gap-1.5 px-3.5 py-2 bg-surface border border-border hover:bg-slate-50 text-text font-bold text-xs rounded-lg shadow-xs transition-colors"
@@ -223,6 +269,17 @@ export const SalesRecords = () => {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50/75 border-b border-border text-[10.5px] uppercase tracking-wider text-text-muted font-bold">
+                {isAdmin && (
+                  <th className="py-3 pl-4 pr-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={sales.length > 0 && selectedIds.size === sales.length}
+                      onChange={toggleSelectAll}
+                      className="rounded border-border cursor-pointer"
+                      title="Select all on this page"
+                    />
+                  </th>
+                )}
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Product</th>
                 <th className="py-3 px-4">Region</th>
@@ -235,19 +292,32 @@ export const SalesRecords = () => {
             <tbody className="divide-y divide-border font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={canMutate ? 7 : 6} className="py-12 text-center text-text-muted">
+                  <td colSpan={isAdmin ? (canMutate ? 8 : 7) : (canMutate ? 7 : 6)} className="py-12 text-center text-text-muted">
                     Loading sales records…
                   </td>
                 </tr>
               ) : sales.length === 0 ? (
                 <tr>
-                  <td colSpan={canMutate ? 7 : 6} className="py-12 text-center text-text-muted">
+                  <td colSpan={isAdmin ? (canMutate ? 8 : 7) : (canMutate ? 7 : 6)} className="py-12 text-center text-text-muted">
                     No sales records matched your criteria.
                   </td>
                 </tr>
               ) : (
                 sales.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr
+                    key={s.id}
+                    className={`hover:bg-slate-50/80 transition-colors ${selectedIds.has(s.id) ? 'bg-blue-50/60' : ''}`}
+                  >
+                    {isAdmin && (
+                      <td className="py-3.5 pl-4 pr-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(s.id)}
+                          onChange={() => toggleSelect(s.id)}
+                          className="rounded border-border cursor-pointer"
+                        />
+                      </td>
+                    )}
                     <td className="py-3.5 px-4 text-text-muted whitespace-nowrap">
                       {formatDate(s.sale_date)}
                       {s.sale_datetime && (

@@ -4,6 +4,7 @@ import { authApi, adminApi } from '../services/api'
 import { RoleBadge } from '../components/common/RoleBadge'
 import { UserAvatar } from '../components/common/UserAvatar'
 import { AdminMaintenancePanel } from '../components/admin/AdminMaintenancePanel'
+import { AdminDangerZonePanel } from '../components/admin/AdminDangerZonePanel'
 import { User, Lock, LogOut, CheckCircle2, Shield, KeyRound, Plus, Trash2, Copy, Check, Clock } from 'lucide-react'
 
 const AdminInvitePanel = () => {
@@ -339,6 +340,7 @@ export const Settings = () => {
           </h3>
           <AdminMaintenancePanel />
           <AdminInvitePanel />
+          <AdminDangerZonePanel />
         </div>
       )}
 
