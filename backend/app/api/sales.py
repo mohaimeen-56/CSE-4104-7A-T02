@@ -4,6 +4,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.db.session import get_db
 from app.schemas.sale import SaleCreate, SaleUpdate, SaleResponse, CsvUploadResponse
 from app.schemas.common import APIResponse, PaginatedResponse, PaginationMeta
@@ -12,6 +13,9 @@ from app.services.csv_service import CsvService
 from app.core.deps import get_current_user, require_manager_or_admin, require_admin
 from app.models.user import User
 from app.models.sale import Sale
+from app.models.product import Product
+from app.models.notification import Notification
+from app.models.ai_log import AILog
 
 router = APIRouter(prefix="/sales", tags=["Sales"])
 
@@ -110,13 +114,31 @@ def delete_all_sales(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """Permanently delete ALL sales records. Admin only. This is irreversible."""
-    deleted_count = db.query(Sale).delete(synchronize_session=False)
+    """Permanently delete ALL sales records and products. Admin only."""
+    deleted_sales = db.query(Sale).delete(synchronize_session=False)
+    deleted_products = db.query(Product).delete(synchronize_session=False)
+    deleted_notifs = db.query(Notification).delete(synchronize_session=False)
+    deleted_ai_logs = db.query(AILog).delete(synchronize_session=False)
+
+    try:
+        db.execute(text("ALTER SEQUENCE sales_id_seq RESTART WITH 1"))
+        db.execute(text("ALTER SEQUENCE products_id_seq RESTART WITH 1"))
+        db.execute(text("ALTER SEQUENCE notifications_id_seq RESTART WITH 1"))
+        db.execute(text("ALTER SEQUENCE ai_logs_id_seq RESTART WITH 1"))
+    except Exception:
+        pass
+
     db.commit()
     return APIResponse(
         success=True,
-        message=f"All {deleted_count} sales records have been permanently deleted.",
-        data={"deleted_count": deleted_count},
+        message=f"All {deleted_sales} sales and {deleted_products} products have been permanently deleted.",
+        data={
+            "deleted_count": deleted_sales,
+            "deleted_sales": deleted_sales,
+            "deleted_products": deleted_products,
+            "deleted_notifications": deleted_notifs,
+            "deleted_ai_logs": deleted_ai_logs,
+        },
     )
 
 

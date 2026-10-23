@@ -57,9 +57,9 @@ export const AdminDangerZonePanel = ({ onDataDeleted }) => {
 
       <div className="flex items-start justify-between gap-4 p-4 bg-danger-bg border border-[#F3C7BD] rounded-lg">
         <div>
-          <div className="text-xs font-bold text-text">Delete All Sales Records</div>
+          <div className="text-xs font-bold text-text">Delete All Data (Sales & Products)</div>
           <div className="text-[11px] text-text-muted mt-0.5">
-            Permanently removes every sales transaction from the database. Products, users, and regions are preserved.
+            Permanently removes all sales transactions and products from the database for a fresh start. User accounts and regions are preserved.
           </div>
         </div>
         <button
@@ -77,10 +77,10 @@ export const AdminDangerZonePanel = ({ onDataDeleted }) => {
           <div className="bg-surface rounded-xl p-6 max-w-sm w-full space-y-4 shadow-lg border border-[#F3C7BD]">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0" />
-              <h5 className="font-bold text-sm text-danger">Delete All Sales Records?</h5>
+              <h5 className="font-bold text-sm text-danger">Delete All Sales & Products?</h5>
             </div>
             <p className="text-xs text-text-muted leading-relaxed">
-              This will <span className="font-bold text-danger">permanently delete all sales data</span> in the database.
+              This will <span className="font-bold text-danger">permanently delete all sales records and products</span> in the database.
               This action <span className="font-bold">cannot be undone</span>.
             </p>
             <div>

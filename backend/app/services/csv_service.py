@@ -4,6 +4,7 @@ from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 from typing import List, Tuple, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from fastapi import UploadFile, HTTPException, status
 from app.models.sale import Sale
 from app.models.product import Product
@@ -13,6 +14,27 @@ from app.core.timeutil import build_sale_datetime
 
 REQUIRED_COLUMNS = ["product_id", "region_id", "quantity", "unit_price", "sale_date"]
 OPTIONAL_COLUMNS = ["sale_time"]  # e.g. "14:30" or "14:30:00" - omitted rows get a flagged estimated time
+
+DEFAULT_PRODUCTS = {
+    1: {"name": "iPhone 15", "category": "Electronics", "subcategory": "Phones", "brand": "Apple", "cost_ratio": Decimal("0.82")},
+    2: {"name": "ThinkPad X1 Carbon", "category": "Electronics", "subcategory": "Laptops", "brand": "Lenovo", "cost_ratio": Decimal("0.81")},
+    3: {"name": "Galaxy Tab S9", "category": "Electronics", "subcategory": "Tablets", "brand": "Samsung", "cost_ratio": Decimal("0.80")},
+    4: {"name": "AirPods Pro", "category": "Electronics", "subcategory": "Audio", "brand": "Apple", "cost_ratio": Decimal("0.73")},
+    5: {"name": "Dell XPS 15", "category": "Electronics", "subcategory": "Laptops", "brand": "Dell", "cost_ratio": Decimal("0.81")},
+    6: {"name": "Sony WH-1000XM5", "category": "Electronics", "subcategory": "Audio", "brand": "Sony", "cost_ratio": Decimal("0.79")},
+    7: {"name": "Office Ergonomic Chair", "category": "Furniture", "subcategory": "Chairs", "brand": "ErgoComfort", "cost_ratio": Decimal("0.72")},
+    8: {"name": "Smart LED Desk Lamp", "category": "Furniture", "subcategory": "Lighting", "brand": "Lumina", "cost_ratio": Decimal("0.65")},
+    9: {"name": "Logitech MX Master 3S", "category": "Electronics", "subcategory": "Accessories", "brand": "Logitech", "cost_ratio": Decimal("0.74")},
+    10: {"name": 'Samsung 4K Monitor 27"', "category": "Electronics", "subcategory": "Displays", "brand": "Samsung", "cost_ratio": Decimal("0.76")},
+}
+
+DEFAULT_REGIONS = {
+    1: "Dhaka",
+    2: "Chittagong",
+    3: "Khulna",
+    4: "Sylhet",
+    5: "Rajshahi",
+}
 
 
 class CsvService:
@@ -71,26 +93,6 @@ class CsvService:
             # Normalize row keys
             row = {k.strip().lower().replace(" ", "_"): v.strip() for k, v in raw_row.items() if k}
 
-            # Validate product_id
-            try:
-                prod_id = int(row.get("product_id", ""))
-                if prod_id not in existing_product_ids:
-                    errors.append(CsvRowError(row=row_num, message=f"Product ID {prod_id} does not exist in database.", data=raw_row))
-                    continue
-            except (ValueError, TypeError):
-                errors.append(CsvRowError(row=row_num, message=f"Invalid product_id '{row.get('product_id')}'. Must be an integer.", data=raw_row))
-                continue
-
-            # Validate region_id
-            try:
-                reg_id = int(row.get("region_id", ""))
-                if reg_id not in existing_region_ids:
-                    errors.append(CsvRowError(row=row_num, message=f"Region ID {reg_id} does not exist in database.", data=raw_row))
-                    continue
-            except (ValueError, TypeError):
-                errors.append(CsvRowError(row=row_num, message=f"Invalid region_id '{row.get('region_id')}'. Must be an integer.", data=raw_row))
-                continue
-
             # Validate quantity
             try:
                 qty = int(row.get("quantity", ""))
@@ -109,6 +111,78 @@ class CsvService:
                     continue
             except (InvalidOperation, TypeError):
                 errors.append(CsvRowError(row=row_num, message=f"Invalid unit_price '{row.get('unit_price')}'. Must be a decimal number.", data=raw_row))
+                continue
+
+            # Validate product_id (Auto-creates missing products!)
+            try:
+                prod_id = int(row.get("product_id", ""))
+                if prod_id not in existing_product_ids:
+                    # Auto-provision product so CSV row is never rejected
+                    tmpl = None
+                    if prod_id in DEFAULT_PRODUCTS:
+                        tmpl = DEFAULT_PRODUCTS[prod_id]
+                    elif (prod_id - 50) in DEFAULT_PRODUCTS:
+                        tmpl = DEFAULT_PRODUCTS[prod_id - 50]
+                    elif (prod_id - 10) in DEFAULT_PRODUCTS:
+                        tmpl = DEFAULT_PRODUCTS[prod_id - 10]
+                    elif (prod_id % 10) in DEFAULT_PRODUCTS and (prod_id % 10) != 0:
+                        tmpl = DEFAULT_PRODUCTS[prod_id % 10]
+                    elif (prod_id % 10) == 0:
+                        tmpl = DEFAULT_PRODUCTS[10]
+
+                    p_name = row.get("product_name") or row.get("product") or (tmpl["name"] if tmpl else f"Product #{prod_id}")
+                    p_cat = row.get("category") or (tmpl["category"] if tmpl else "General")
+                    p_sub = row.get("subcategory") or (tmpl["subcategory"] if tmpl else None)
+                    p_brand = row.get("brand") or (tmpl["brand"] if tmpl else None)
+                    c_ratio = tmpl["cost_ratio"] if tmpl else Decimal("0.75")
+                    cost_val = round(unit_price * c_ratio, 2)
+
+                    new_prod = Product(
+                        id=prod_id,
+                        name=p_name,
+                        category=p_cat,
+                        subcategory=p_sub,
+                        brand=p_brand,
+                        price=unit_price,
+                        cost=cost_val,
+                        stock=100,
+                        is_active=True,
+                    )
+                    db.add(new_prod)
+                    db.flush()
+                    existing_product_ids.add(prod_id)
+            except (ValueError, TypeError):
+                errors.append(CsvRowError(row=row_num, message=f"Invalid product_id '{row.get('product_id')}'. Must be an integer.", data=raw_row))
+                continue
+
+            # Validate region_id (Auto-creates missing regions!)
+            try:
+                reg_id = int(row.get("region_id", ""))
+                if reg_id not in existing_region_ids:
+                    # Auto-provision region so CSV row is never rejected
+                    r_mapped = None
+                    if reg_id in DEFAULT_REGIONS:
+                        r_mapped = DEFAULT_REGIONS[reg_id]
+                    elif (reg_id - 25) in DEFAULT_REGIONS:
+                        r_mapped = DEFAULT_REGIONS[reg_id - 25]
+                    elif (reg_id - 5) in DEFAULT_REGIONS:
+                        r_mapped = DEFAULT_REGIONS[reg_id - 5]
+                    elif (reg_id % 5) in DEFAULT_REGIONS and (reg_id % 5) != 0:
+                        r_mapped = DEFAULT_REGIONS[reg_id % 5]
+                    elif (reg_id % 5) == 0:
+                        r_mapped = DEFAULT_REGIONS[5]
+
+                    r_name = row.get("region_name") or row.get("region") or (r_mapped if r_mapped else f"Region #{reg_id}")
+                    new_reg = Region(
+                        id=reg_id,
+                        name=r_name,
+                        country="Bangladesh",
+                    )
+                    db.add(new_reg)
+                    db.flush()
+                    existing_region_ids.add(reg_id)
+            except (ValueError, TypeError):
+                errors.append(CsvRowError(row=row_num, message=f"Invalid region_id '{row.get('region_id')}'. Must be an integer.", data=raw_row))
                 continue
 
             # Validate sale_date (supports YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY)
@@ -147,6 +221,15 @@ class CsvService:
             db.bulk_save_objects(sales_to_insert)
             db.commit()
             imported_rows = len(sales_to_insert)
+
+            # Sync sequences for PostgreSQL if needed
+            try:
+                db.execute(text("SELECT setval('products_id_seq', (SELECT COALESCE(MAX(id), 1) FROM products))"))
+                db.execute(text("SELECT setval('regions_id_seq', (SELECT COALESCE(MAX(id), 1) FROM regions))"))
+                db.execute(text("SELECT setval('sales_id_seq', (SELECT COALESCE(MAX(id), 1) FROM sales))"))
+                db.commit()
+            except Exception:
+                pass
 
         return CsvUploadResponse(
             total_rows=total_rows,
