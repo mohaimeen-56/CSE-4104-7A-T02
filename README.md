@@ -168,14 +168,17 @@ CSE4104_T2/
 ├── database/
 │   ├── schemas.sql       # PostgreSQL (Supabase) schema definition
 │   └── seed.sql          # Seed SQL script
+├── sample_csvs/          # Sample CSV datasets for testing bulk upload
 ├── docs/
 │   ├── diagrams/         # System diagrams (Architecture, ERD, Use Case in PDF)
-│   ├── reports/          # Course & project reports (Proposal, SRS, Testing, Bug Reports in PDF)
+│   ├── reports/          # Course & project reports (Final Report, SRS, Testing, Bug Reports)
+│   ├── scripts/          # Report & documentation generator scripts
 │   ├── API.md            # REST API documentation
 │   ├── ARCHITECTURE.md   # Architectural design specification
 │   ├── DEPLOYMENT.md     # Production deployment guide (Supabase, Render, Vercel, Cloudflare)
 │   ├── SETUP.md          # Setup & local execution guide
 │   └── README.md         # Documentation index
+├── pytest.ini            # Root pytest configuration
 ├── vercel.json           # Vercel deployment configuration
 ├── wrangler.jsonc        # Cloudflare Pages / Workers configuration
 ├── render.yaml           # Render deployment blueprint

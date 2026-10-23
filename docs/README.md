@@ -12,13 +12,16 @@ docs/
 │   ├── CSE4104-7A-T02_ArchitectureDiagram.pdf
 │   ├── CSE4104-7A-T02_ERDiagram.pdf
 │   └── CSE4104-7A-T02_UseCaseDiagram.pdf
-├── reports/                           # Academic & Project Reports (PDF)
+├── reports/                           # Academic & Project Reports (PDF & DOCX)
+│   ├── CSE4104-7A-T02_FinalReport.docx
 │   ├── CSE4104-7A-T02_Proposal.pdf
 │   ├── CSE4104-7A-T02_SRS.pdf
 │   ├── CSE4104-7A-T02_TeamInfo.pdf
 │   ├── CSE4104-7A-T02_TestCases.pdf
 │   ├── CSE4104-7A-T02_TestingReport.pdf
 │   └── CSE4104-7A-T02_BugReport.pdf
+├── scripts/                            # Documentation generator scripts
+│   └── generate_reports.py
 ├── assets/                            # Branding & Graphical Assets
 │   └── myicon.ico
 ├── API.md                             # REST API Specification & Endpoints
@@ -44,6 +47,7 @@ docs/
 - **[Use Case Diagram](diagrams/CSE4104-7A-T02_UseCaseDiagram.pdf)**: User interactions, roles (Admin, Manager, Viewer), and functional boundaries.
 
 ### 3. Project Reports & Academic Submissions (`docs/reports/`)
+- **[Final Report](reports/CSE4104-7A-T02_FinalReport.docx)**: Comprehensive project final report document (Word / DOCX format).
 - **[Project Proposal](reports/CSE4104-7A-T02_Proposal.pdf)**: Initial scope, objectives, problem statement, and proposed deliverables.
 - **[Software Requirements Specification (SRS)](reports/CSE4104-7A-T02_SRS.pdf)**: Formal functional and non-functional requirements.
 - **[Team Information](reports/CSE4104-7A-T02_TeamInfo.pdf)**: Member roles, student IDs, and responsibilities.
