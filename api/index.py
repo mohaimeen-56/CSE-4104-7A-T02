@@ -1,9 +1,36 @@
 import sys
+import os
 from pathlib import Path
 
-# Add backend directory to sys.path so 'app.*' imports resolve cleanly
-backend_dir = Path(__file__).resolve().parent.parent / "backend"
-if str(backend_dir) not in sys.path:
-    sys.path.insert(0, str(backend_dir))
+root_dir = Path(__file__).resolve().parent.parent
+backend_dir = root_dir / "backend"
 
-from app.main import app  # ASGI entrypoint for Vercel Serverless Functions
+for p in [str(backend_dir), str(root_dir)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+try:
+    from app.main import app
+except Exception as exc:
+    import traceback
+    err_trace = traceback.format_exc()
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+    
+    app = FastAPI(title="Diagnostic Fallback")
+
+    @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+    def diagnostic_handler(full_path: str):
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "FastAPI failed to initialize on Vercel",
+                "details": str(exc),
+                "traceback": err_trace,
+                "sys_path": sys.path,
+                "backend_exists": backend_dir.exists(),
+                "root_files": os.listdir(str(root_dir)) if root_dir.exists() else [],
+                "backend_files": os.listdir(str(backend_dir)) if backend_dir.exists() else [],
+            }
+        )
