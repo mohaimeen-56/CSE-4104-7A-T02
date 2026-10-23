@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Dict, Any, Optional
 import httpx
 from app.ai.provider import AIProvider
@@ -33,7 +34,12 @@ class GeminiProvider(AIProvider):
 
     async def _generate(self, prompt: str) -> Optional[str]:
         if not self.api_key:
+            print("[Gemini AI] No API key configured. Using offline fallback engine.")
             return None
+
+        t0 = time.time()
+        print(f"\n[Gemini AI] >>> Sending request to Google Gemini API (model: {self.model})...")
+
         url = f"{GEMINI_API_BASE}/{self.model}:generateContent?key={self.api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
@@ -44,19 +50,28 @@ class GeminiProvider(AIProvider):
                 resp = await client.post(url, json=payload)
                 if resp.status_code != 200 and self.model != "gemini-3.5-flash-lite":
                     logger.warning("Gemini model %s returned %s, falling back to gemini-3.5-flash-lite", self.model, resp.status_code)
+                    print(f"[Gemini AI] Model {self.model} returned {resp.status_code}, falling back to gemini-3.5-flash-lite...")
                     fallback_url = f"{GEMINI_API_BASE}/gemini-3.5-flash-lite:generateContent?key={self.api_key}"
                     resp = await client.post(fallback_url, json=payload)
 
+            elapsed = time.time() - t0
+
             if resp.status_code != 200:
+                print(f"[Gemini AI] Error {resp.status_code} from Google API: {resp.text[:150]}")
                 logger.error("Gemini API error %s: %s", resp.status_code, resp.text[:300])
                 return None
+
             data = resp.json()
             text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            print(f"[Gemini AI] <<< SUCCESS: Live response received from Google in {elapsed:.2f}s ({len(text)} characters)\n")
             return text or None
         except httpx.TimeoutException:
+            elapsed = time.time() - t0
+            print(f"[Gemini AI] Request timed out after {elapsed:.2f}s. Using offline fallback engine.")
             logger.error("Gemini request timed out (model=%s)", self.model)
             return None
-        except Exception:
+        except Exception as e:
+            print(f"[Gemini AI] Unexpected exception: {e}")
             logger.exception("Unexpected Gemini failure")
             return None
 
