@@ -5,7 +5,9 @@ from app.core.config import settings
 
 _db_url = settings.DATABASE_URL
 if _db_url.startswith("postgres://"):
-    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+    _db_url = _db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif _db_url.startswith("postgresql://") and not _db_url.startswith("postgresql+"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # On Vercel serverless, /var/task is read-only; fallback to writable /tmp for SQLite
 if _db_url.startswith("sqlite") and (os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")):
