@@ -112,12 +112,11 @@ export const Sidebar = ({ isOpen, onClose, onOpenCommand }) => {
         <div className="flex items-center justify-between px-3 pt-4 pb-3 border-b border-[#1E3455]">
           <div className="flex items-center gap-2.5 min-w-0">
             {/* Logo mark */}
-            <div
-              className="w-7 h-7 rounded bg-gradient-to-br from-[#5B9BD5] to-[#1F3864] flex items-center justify-center text-white font-extrabold text-[11px] shadow-sm flex-shrink-0"
-              aria-hidden="true"
-            >
-              SQ
-            </div>
+            <img
+              src="/logo.png"
+              alt="SalesIQ Logo"
+              className="w-7 h-7 rounded object-contain shadow-sm flex-shrink-0"
+            />
             <div className="min-w-0">
               <span className="block font-bold text-sm text-white tracking-tight leading-tight truncate">
                 SalesIQ

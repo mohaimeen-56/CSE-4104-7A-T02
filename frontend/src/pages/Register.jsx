@@ -60,9 +60,11 @@ export const Register = () => {
     <div className="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(circle_at_30%_20%,#234880_0%,#142b4f_45%,#0d1f3a_100%)]">
       <div className="w-full max-w-[420px] bg-surface rounded-2xl p-8 sm:p-9 shadow-2xl border border-white/10">
         {/* Brand */}
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#5B9BD5] to-[#1F3864] flex items-center justify-center font-extrabold text-lg text-white mx-auto mb-5 shadow-md">
-          SQ
-        </div>
+        <img
+          src="/logo.png"
+          alt="SalesIQ Logo"
+          className="w-12 h-12 rounded-xl object-contain mx-auto mb-5 shadow-md"
+        />
 
         <h2 className="text-center text-xl font-bold text-text mb-1 tracking-tight">
           Create an Account
